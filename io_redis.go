@@ -32,6 +32,8 @@ func (c *Client) Connect() (conn net.Conn, err error) {
 		addr = c.Addr
 	}
 	conn, err = net.Dial("tcp", addr)
+
+	c.Conn = conn
 	return
 }
 
