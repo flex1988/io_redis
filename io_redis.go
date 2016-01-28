@@ -26,7 +26,7 @@ func (err RedisError) Error() string {
 	return "Redis Error: " + string(err)
 }
 
-func (c *Client) connect() (conn net.Conn, err error) {
+func (c *Client) Connect() (conn net.Conn, err error) {
 	var addr = defaultAddr
 	if c.Addr != "" {
 		addr = c.Addr

@@ -9,7 +9,7 @@ import (
 var client Client
 
 func init() {
-	conn, err := client.connect()
+	conn, err := client.Connect()
 
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "Redis connect error %s", err)
