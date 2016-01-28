@@ -15,13 +15,23 @@ func init() {
 		fmt.Fprintf(os.Stdout, "Redis connect error %s", err)
 	}
 
-	client.conn = conn
+	client.Conn = conn
 }
 
 func TestBasic(t *testing.T) {
-	_, err := client.rawSend(client.conn, []byte("*2\r\n$3\r\nget\r\n$5\r\nhello\r\n"))
+	_, err := client.Send("SET", "key", "hello world!")
 
 	if err != nil {
-		t.Fatalf("Redis connect error %s", err)
+		t.Fatal("Redis SET error")
+	}
+
+	value, err := client.Send("GET", "key")
+
+	if err != nil {
+		t.Fatal("Redis GET error")
+	}
+
+	if string(string(value.([]byte))) != "hello world!" {
+		t.Fatal("Redis key value error")
 	}
 }

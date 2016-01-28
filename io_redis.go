@@ -2,6 +2,10 @@ package ioredis
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"strconv"
 	"strings"
@@ -12,8 +16,8 @@ var defaultAddr = "127.0.0.1:6379"
 type Client struct {
 	Addr     string
 	PoolSize int
-	conn     net.Conn
-	pool     chan net.Conn
+	Conn     net.Conn
+	Pool     chan net.Conn
 }
 
 type RedisError string
@@ -31,8 +35,17 @@ func (c *Client) connect() (conn net.Conn, err error) {
 	return
 }
 
-func (c *Client) rawSend(conn net.Conn, cmd []byte) (interface{}, error) {
-	_, err := conn.Write(cmd)
+func (c *Client) Send(cmd string, args ...string) (interface{}, error) {
+
+	data, err := c.rawSend(c.Conn, cmd, args...)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (c *Client) rawSend(conn net.Conn, cmd string, args ...string) (interface{}, error) {
+	_, err := conn.Write(command(cmd, args...))
 
 	if err != nil {
 		return nil, err
@@ -46,6 +59,18 @@ func (c *Client) rawSend(conn net.Conn, cmd []byte) (interface{}, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+func command(cmd string, args ...string) []byte {
+	var buf bytes.Buffer
+
+	fmt.Fprintf(&buf, "*%d\r\n$%d\r\n%s\r\n", len(args)+1, len(cmd), cmd)
+
+	for _, v := range args {
+		fmt.Fprintf(&buf, "$%d\r\n%s\r\n", len(v), v)
+	}
+
+	return buf.Bytes()
 }
 
 func readResponse(reader *bufio.Reader) (interface{}, error) {
@@ -65,13 +90,20 @@ func readResponse(reader *bufio.Reader) (interface{}, error) {
 		}
 	}
 
-	if line[0] == '+' {
+	switch line[0] {
+	case '+':
 		return strings.TrimSpace(line[1:]), nil
-	} else if line[0] == '$' {
+	case ':':
 		return strconv.Atoi(strings.TrimSpace(line[1:]))
-	}
+	case '-':
+		return nil, RedisError("ERR:" + strings.TrimSpace(line[5:]))
+	case '$':
+		return readBulk(reader, line)
 
-	return readBulk(reader, line)
+		//TODO *
+	default:
+		return nil, RedisError("INVALID DATA TYPE")
+	}
 }
 
 func readBulk(reader *bufio.Reader, head string) ([]byte, error) {
@@ -85,9 +117,24 @@ func readBulk(reader *bufio.Reader, head string) ([]byte, error) {
 		}
 	}
 
-	switch head[0] {
-	case ':':
-		data = []byte(strings.TrimSpace(head[1:]))
+	if head[0] == '$' {
+		size, err := strconv.Atoi(head[1:])
+
+		if err != nil {
+			return nil, err
+		}
+
+		if size == 0 {
+			data = nil
+		}
+
+		str := io.LimitReader(reader, int64(size))
+
+		data, err = ioutil.ReadAll(str)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 	return data, err
 }
