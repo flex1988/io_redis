@@ -19,13 +19,13 @@ func init() {
 }
 
 func TestBasic(t *testing.T) {
-	_, err := client.Send("SET", "key", "hello world!")
+	_, err := client.Set("key", "hello world!")
 
 	if err != nil {
 		t.Fatal("Redis SET error")
 	}
 
-	value, err := client.Send("GET", "key")
+	value, err := client.Get("key")
 
 	if err != nil {
 		t.Fatal("Redis GET error")
@@ -33,5 +33,17 @@ func TestBasic(t *testing.T) {
 
 	if string(string(value.([]byte))) != "hello world!" {
 		t.Fatal("Redis key value error")
+	}
+}
+
+func BenchmarkGet(b *testing.B) {
+	for i := 1; i < b.N; i++ {
+		client.Set(string(i), "hello world!")
+	}
+}
+
+func BenchmarkSet(b *testing.B) {
+	for i := 1; i < b.N; i++ {
+		client.Set("1", "hello world!")
 	}
 }

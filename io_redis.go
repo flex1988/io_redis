@@ -140,3 +140,23 @@ func readBulk(reader *bufio.Reader, head string) ([]byte, error) {
 	}
 	return data, err
 }
+
+func (c *Client) Set(k string, v string) (interface{}, error) {
+	data, err := c.Send("SET", k, v)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (c *Client) Get(k string) (interface{}, error) {
+	data, err := c.Send("GET", k)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
